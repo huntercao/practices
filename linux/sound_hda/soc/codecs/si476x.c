@@ -231,17 +231,14 @@ static struct snd_soc_dai_driver si476x_dai = {
 	.ops		= &si476x_dai_ops,
 };
 
-static int si476x_probe(struct snd_soc_component *component)
+static struct regmap *si476x_get_regmap(struct device *dev)
 {
-	snd_soc_component_init_regmap(component,
-				dev_get_regmap(component->dev->parent, NULL));
-
-	return 0;
+	return dev_get_regmap(dev->parent, NULL);
 }
 
 static const struct snd_soc_codec_driver soc_codec_dev_si476x = {
+	.get_regmap = si476x_get_regmap,
 	.component_driver = {
-		.probe			= si476x_probe,
 		.dapm_widgets		= si476x_dapm_widgets,
 		.num_dapm_widgets	= ARRAY_SIZE(si476x_dapm_widgets),
 		.dapm_routes		= si476x_dapm_routes,

@@ -106,7 +106,6 @@ struct tlv320dac33_priv {
 	int mode1_latency;		/* latency caused by the i2c writes in
 					 * us */
 	u8 burst_bclkdiv;		/* BCLK divider value in burst mode */
-	u8 *reg_cache;
 	unsigned int burst_rate;	/* Interface speed in Burst modes */
 
 	int keep_bclk;			/* Keep the BCLK continuously running
@@ -122,7 +121,7 @@ struct tlv320dac33_priv {
 	unsigned int uthr;
 
 	enum dac33_state state;
-	struct i2c_client *i2c;
+	void *control_data;
 };
 
 static const u8 dac33_reg[DAC33_CACHEREGNUM] = {
@@ -174,8 +173,7 @@ static const u8 dac33_reg[DAC33_CACHEREGNUM] = {
 static inline unsigned int dac33_read_reg_cache(struct snd_soc_codec *codec,
 						unsigned reg)
 {
-	struct tlv320dac33_priv *dac33 = snd_soc_codec_get_drvdata(codec);
-	u8 *cache = dac33->reg_cache;
+	u8 *cache = codec->reg_cache;
 	if (reg >= DAC33_CACHEREGNUM)
 		return 0;
 
@@ -185,8 +183,7 @@ static inline unsigned int dac33_read_reg_cache(struct snd_soc_codec *codec,
 static inline void dac33_write_reg_cache(struct snd_soc_codec *codec,
 					 u8 reg, u8 value)
 {
-	struct tlv320dac33_priv *dac33 = snd_soc_codec_get_drvdata(codec);
-	u8 *cache = dac33->reg_cache;
+	u8 *cache = codec->reg_cache;
 	if (reg >= DAC33_CACHEREGNUM)
 		return;
 
@@ -203,7 +200,7 @@ static int dac33_read(struct snd_soc_codec *codec, unsigned int reg,
 
 	/* If powered off, return the cached value */
 	if (dac33->chip_power) {
-		val = i2c_smbus_read_byte_data(dac33->i2c, value[0]);
+		val = i2c_smbus_read_byte_data(codec->control_data, value[0]);
 		if (val < 0) {
 			dev_err(codec->dev, "Read failed (%d)\n", val);
 			value[0] = dac33_read_reg_cache(codec, reg);
@@ -236,7 +233,7 @@ static int dac33_write(struct snd_soc_codec *codec, unsigned int reg,
 
 	dac33_write_reg_cache(codec, data[0], data[1]);
 	if (dac33->chip_power) {
-		ret = i2c_master_send(dac33->i2c, data, 2);
+		ret = codec->hw_write(codec->control_data, data, 2);
 		if (ret != 2)
 			dev_err(codec->dev, "Write failed (%d)\n", ret);
 		else
@@ -247,7 +244,7 @@ static int dac33_write(struct snd_soc_codec *codec, unsigned int reg,
 }
 
 static int dac33_write_locked(struct snd_soc_codec *codec, unsigned int reg,
-			      unsigned int value)
+		       unsigned int value)
 {
 	struct tlv320dac33_priv *dac33 = snd_soc_codec_get_drvdata(codec);
 	int ret;
@@ -283,7 +280,7 @@ static int dac33_write16(struct snd_soc_codec *codec, unsigned int reg,
 	if (dac33->chip_power) {
 		/* We need to set autoincrement mode for 16 bit writes */
 		data[0] |= DAC33_I2C_ADDR_AUTOINC;
-		ret = i2c_master_send(dac33->i2c, data, 3);
+		ret = codec->hw_write(codec->control_data, data, 3);
 		if (ret != 3)
 			dev_err(codec->dev, "Write failed (%d)\n", ret);
 		else
@@ -1382,6 +1379,8 @@ static int dac33_soc_probe(struct snd_soc_codec *codec)
 	struct tlv320dac33_priv *dac33 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
+	codec->control_data = dac33->control_data;
+	codec->hw_write = (hw_write_t) i2c_master_send;
 	dac33->codec = codec;
 
 	/* Read the tlv320dac33 ID registers */
@@ -1439,7 +1438,9 @@ static const struct snd_soc_codec_driver soc_codec_dev_tlv320dac33 = {
 	.write = dac33_write_locked,
 	.set_bias_level = dac33_set_bias_level,
 	.idle_bias_off = true,
-
+	.reg_cache_size = ARRAY_SIZE(dac33_reg),
+	.reg_word_size = sizeof(u8),
+	.reg_cache_default = dac33_reg,
 	.probe = dac33_soc_probe,
 	.remove = dac33_soc_remove,
 
@@ -1498,14 +1499,7 @@ static int dac33_i2c_probe(struct i2c_client *client,
 	if (dac33 == NULL)
 		return -ENOMEM;
 
-	dac33->reg_cache = devm_kmemdup(&client->dev,
-					dac33_reg,
-					ARRAY_SIZE(dac33_reg) * sizeof(u8),
-					GFP_KERNEL);
-	if (!dac33->reg_cache)
-		return -ENOMEM;
-
-	dac33->i2c = client;
+	dac33->control_data = client;
 	mutex_init(&dac33->mutex);
 	spin_lock_init(&dac33->lock);
 

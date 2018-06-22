@@ -1,14 +1,22 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * ALSA SoC TLV320AIC31xx CODEC Driver
+ * ALSA SoC TLV320AIC31XX codec driver
  *
- * Copyright (C) 2014-2017 Texas Instruments Incorporated - http://www.ti.com/
- *	Jyri Sarha <jsarha@ti.com>
+ * Copyright (C) 2014 Texas Instruments, Inc.
+ *
+ * Author: Jyri Sarha <jsarha@ti.com>
  *
  * Based on ground work by: Ajit Kulkarni <x0175765@ti.com>
  *
- * The TLV320AIC31xx series of audio codecs are low-power, highly integrated
- * high performance codecs which provides a stereo DAC, a mono ADC,
+ * This package is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * THIS PACKAGE IS PROVIDED AS IS AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * The TLV320AIC31xx series of audio codec is a low-power, highly integrated
+ * high performance codec which provides a stereo DAC, a mono ADC,
  * and mono/stereo Class-D speaker driver.
  */
 
@@ -18,7 +26,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/i2c.h>
-#include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/acpi.h>
 #include <linux/of.h>
@@ -136,7 +144,8 @@ static const struct regmap_config aic31xx_i2c_regmap = {
 	.max_register = 12 * 128,
 };
 
-static const char * const aic31xx_supply_names[] = {
+#define AIC31XX_NUM_SUPPLIES	6
+static const char * const aic31xx_supply_names[AIC31XX_NUM_SUPPLIES] = {
 	"HPVDD",
 	"SPRVDD",
 	"SPLVDD",
@@ -144,8 +153,6 @@ static const char * const aic31xx_supply_names[] = {
 	"IOVDD",
 	"DVDD",
 };
-
-#define AIC31XX_NUM_SUPPLIES ARRAY_SIZE(aic31xx_supply_names)
 
 struct aic31xx_disable_nb {
 	struct notifier_block nb;
@@ -157,9 +164,6 @@ struct aic31xx_priv {
 	u8 i2c_regs_status;
 	struct device *dev;
 	struct regmap *regmap;
-	enum aic31xx_type codec_type;
-	struct gpio_desc *gpio_reset;
-	int micbias_vg;
 	struct aic31xx_pdata pdata;
 	struct regulator_bulk_data supplies[AIC31XX_NUM_SUPPLIES];
 	struct aic31xx_disable_nb disable_nb[AIC31XX_NUM_SUPPLIES];
@@ -181,7 +185,7 @@ struct aic31xx_rate_divs {
 	u8 madc;
 };
 
-/* ADC dividers can be disabled by configuring them to 0 */
+/* ADC dividers can be disabled by cofiguring them to 0 */
 static const struct aic31xx_rate_divs aic31xx_divs[] = {
 	/* mclk/p    rate  pll: j     d        dosr ndac mdac  aors nadc madc */
 	/* 8k rate */
@@ -452,7 +456,7 @@ static int mic_bias_event(struct snd_soc_dapm_widget *w,
 		/* change mic bias voltage to user defined */
 		snd_soc_update_bits(codec, AIC31XX_MICBIAS,
 				    AIC31XX_MICBIAS_MASK,
-				    aic31xx->micbias_vg <<
+				    aic31xx->pdata.micbias_vg <<
 				    AIC31XX_MICBIAS_SHIFT);
 		dev_dbg(codec->dev, "%s: turned on\n", __func__);
 		break;
@@ -675,14 +679,14 @@ static int aic31xx_add_controls(struct snd_soc_codec *codec)
 	int ret = 0;
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
 
-	if (!(aic31xx->codec_type & DAC31XX_BIT))
+	if (!(aic31xx->pdata.codec_type & DAC31XX_BIT))
 		ret = snd_soc_add_codec_controls(
 			codec, aic31xx_snd_controls,
 			ARRAY_SIZE(aic31xx_snd_controls));
 	if (ret)
 		return ret;
 
-	if (aic31xx->codec_type & AIC31XX_STEREO_CLASS_D_BIT)
+	if (aic31xx->pdata.codec_type & AIC31XX_STEREO_CLASS_D_BIT)
 		ret = snd_soc_add_codec_controls(
 			codec, aic311x_snd_controls,
 			ARRAY_SIZE(aic311x_snd_controls));
@@ -700,7 +704,7 @@ static int aic31xx_add_widgets(struct snd_soc_codec *codec)
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
-	if (aic31xx->codec_type & DAC31XX_BIT) {
+	if (aic31xx->pdata.codec_type & DAC31XX_BIT) {
 		ret = snd_soc_dapm_new_controls(
 			dapm, dac31xx_dapm_widgets,
 			ARRAY_SIZE(dac31xx_dapm_widgets));
@@ -724,7 +728,7 @@ static int aic31xx_add_widgets(struct snd_soc_codec *codec)
 			return ret;
 	}
 
-	if (aic31xx->codec_type & AIC31XX_STEREO_CLASS_D_BIT) {
+	if (aic31xx->pdata.codec_type & AIC31XX_STEREO_CLASS_D_BIT) {
 		ret = snd_soc_dapm_new_controls(
 			dapm, aic311x_dapm_widgets,
 			ARRAY_SIZE(aic311x_dapm_widgets));
@@ -756,16 +760,10 @@ static int aic31xx_setup_pll(struct snd_soc_codec *codec,
 {
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
 	int bclk_score = snd_soc_params_to_frame_size(params);
-	int mclk_p;
+	int mclk_p = aic31xx->sysclk / aic31xx->p_div;
 	int bclk_n = 0;
 	int match = -1;
 	int i;
-
-	if (!aic31xx->sysclk || !aic31xx->p_div) {
-		dev_err(codec->dev, "Master clock not supplied\n");
-		return -EINVAL;
-	}
-	mclk_p = aic31xx->sysclk / aic31xx->p_div;
 
 	/* Use PLL as CODEC_CLKIN and DAC_CLK as BDIV_CLKIN */
 	snd_soc_update_bits(codec, AIC31XX_CLKMUX,
@@ -842,17 +840,11 @@ static int aic31xx_setup_pll(struct snd_soc_codec *codec,
 
 	dev_dbg(codec->dev,
 		"pll %d.%04d/%d dosr %d n %d m %d aosr %d n %d m %d bclk_n %d\n",
-		aic31xx_divs[i].pll_j,
-		aic31xx_divs[i].pll_d,
-		aic31xx->p_div,
-		aic31xx_divs[i].dosr,
-		aic31xx_divs[i].ndac,
-		aic31xx_divs[i].mdac,
-		aic31xx_divs[i].aosr,
-		aic31xx_divs[i].nadc,
-		aic31xx_divs[i].madc,
-		bclk_n
-	);
+		aic31xx_divs[i].pll_j, aic31xx_divs[i].pll_d,
+		aic31xx->p_div, aic31xx_divs[i].dosr,
+		aic31xx_divs[i].ndac, aic31xx_divs[i].mdac,
+		aic31xx_divs[i].aosr, aic31xx_divs[i].nadc,
+		aic31xx_divs[i].madc, bclk_n);
 
 	return 0;
 }
@@ -927,28 +919,8 @@ static int aic31xx_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	case SND_SOC_DAIFMT_CBM_CFM:
 		iface_reg1 |= AIC31XX_BCLK_MASTER | AIC31XX_WCLK_MASTER;
 		break;
-	case SND_SOC_DAIFMT_CBS_CFM:
-		iface_reg1 |= AIC31XX_WCLK_MASTER;
-		break;
-	case SND_SOC_DAIFMT_CBM_CFS:
-		iface_reg1 |= AIC31XX_BCLK_MASTER;
-		break;
-	case SND_SOC_DAIFMT_CBS_CFS:
-		break;
 	default:
-		dev_err(codec->dev, "Invalid DAI master/slave interface\n");
-		return -EINVAL;
-	}
-
-	/* signal polarity */
-	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
-	case SND_SOC_DAIFMT_NB_NF:
-		break;
-	case SND_SOC_DAIFMT_IB_NF:
-		iface_reg2 |= AIC31XX_BCLKINV_MASK;
-		break;
-	default:
-		dev_err(codec->dev, "Invalid DAI clock signal polarity\n");
+		dev_alert(codec->dev, "Invalid DAI master/slave interface\n");
 		return -EINVAL;
 	}
 
@@ -959,12 +931,16 @@ static int aic31xx_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	case SND_SOC_DAIFMT_DSP_A:
 		dsp_a_val = 0x1; /* fall through */
 	case SND_SOC_DAIFMT_DSP_B:
-		/*
-		 * NOTE: This CODEC samples on the falling edge of BCLK in
-		 * DSP mode, this is inverted compared to what most DAIs
-		 * expect, so we invert for this mode
-		 */
-		iface_reg2 ^= AIC31XX_BCLKINV_MASK;
+		/* NOTE: BCLKINV bit value 1 equas NB and 0 equals IB */
+		switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+		case SND_SOC_DAIFMT_NB_NF:
+			iface_reg2 |= AIC31XX_BCLKINV_MASK;
+			break;
+		case SND_SOC_DAIFMT_IB_NF:
+			break;
+		default:
+			return -EINVAL;
+		}
 		iface_reg1 |= (AIC31XX_DSP_MODE <<
 			       AIC31XX_IFACE1_DATATYPE_SHIFT);
 		break;
@@ -1005,9 +981,8 @@ static int aic31xx_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	dev_dbg(codec->dev, "## %s: clk_id = %d, freq = %d, dir = %d\n",
 		__func__, clk_id, freq, dir);
 
-	for (i = 1; i < 8; i++)
-		if (freq / i <= 20000000)
-			break;
+	for (i = 1; freq/i > 20000000 && i < 8; i++)
+		;
 	if (freq/i > 20000000) {
 		dev_err(aic31xx->dev, "%s: Too high mclk frequency %u\n",
 			__func__, freq);
@@ -1015,9 +990,9 @@ static int aic31xx_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	}
 	aic31xx->p_div = i;
 
-	for (i = 0; i < ARRAY_SIZE(aic31xx_divs); i++)
-		if (aic31xx_divs[i].mclk_p == freq / aic31xx->p_div)
-			break;
+	for (i = 0; i < ARRAY_SIZE(aic31xx_divs) &&
+		     aic31xx_divs[i].mclk_p != freq/aic31xx->p_div; i++)
+		;
 	if (i == ARRAY_SIZE(aic31xx_divs)) {
 		dev_err(aic31xx->dev, "%s: Unsupported frequency %d\n",
 			__func__, freq);
@@ -1029,7 +1004,6 @@ static int aic31xx_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 			    clk_id << AIC31XX_PLL_CLKIN_SHIFT);
 
 	aic31xx->sysclk = freq;
-
 	return 0;
 }
 
@@ -1045,30 +1019,14 @@ static int aic31xx_regulator_event(struct notifier_block *nb,
 		 * Put codec to reset and as at least one of the
 		 * supplies was disabled.
 		 */
-		if (aic31xx->gpio_reset)
-			gpiod_set_value(aic31xx->gpio_reset, 1);
+		if (gpio_is_valid(aic31xx->pdata.gpio_reset))
+			gpio_set_value(aic31xx->pdata.gpio_reset, 0);
 
 		regcache_mark_dirty(aic31xx->regmap);
 		dev_dbg(aic31xx->dev, "## %s: DISABLE received\n", __func__);
 	}
 
 	return 0;
-}
-
-static int aic31xx_reset(struct aic31xx_priv *aic31xx)
-{
-	int ret = 0;
-
-	if (aic31xx->gpio_reset) {
-		gpiod_set_value(aic31xx->gpio_reset, 1);
-		ndelay(10); /* At least 10ns */
-		gpiod_set_value(aic31xx->gpio_reset, 0);
-	} else {
-		ret = regmap_write(aic31xx->regmap, AIC31XX_RESET, 1);
-	}
-	mdelay(1); /* At least 1ms */
-
-	return ret;
 }
 
 static void aic31xx_clk_on(struct snd_soc_codec *codec)
@@ -1107,22 +1065,20 @@ static void aic31xx_clk_off(struct snd_soc_codec *codec)
 static int aic31xx_power_on(struct snd_soc_codec *codec)
 {
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
-	int ret;
+	int ret = 0;
 
 	ret = regulator_bulk_enable(ARRAY_SIZE(aic31xx->supplies),
 				    aic31xx->supplies);
 	if (ret)
 		return ret;
 
+	if (gpio_is_valid(aic31xx->pdata.gpio_reset)) {
+		gpio_set_value(aic31xx->pdata.gpio_reset, 1);
+		udelay(100);
+	}
 	regcache_cache_only(aic31xx->regmap, false);
-
-	/* Reset device registers for a consistent power-on like state */
-	ret = aic31xx_reset(aic31xx);
-	if (ret < 0)
-		dev_err(aic31xx->dev, "Could not reset device: %d\n", ret);
-
 	ret = regcache_sync(aic31xx->regmap);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(codec->dev,
 			"Failed to restore cache: %d\n", ret);
 		regcache_cache_only(aic31xx->regmap, true);
@@ -1130,17 +1086,19 @@ static int aic31xx_power_on(struct snd_soc_codec *codec)
 				       aic31xx->supplies);
 		return ret;
 	}
-
 	return 0;
 }
 
-static void aic31xx_power_off(struct snd_soc_codec *codec)
+static int aic31xx_power_off(struct snd_soc_codec *codec)
 {
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
 
 	regcache_cache_only(aic31xx->regmap, true);
-	regulator_bulk_disable(ARRAY_SIZE(aic31xx->supplies),
-			       aic31xx->supplies);
+	ret = regulator_bulk_disable(ARRAY_SIZE(aic31xx->supplies),
+				     aic31xx->supplies);
+
+	return ret;
 }
 
 static int aic31xx_set_bias_level(struct snd_soc_codec *codec,
@@ -1179,10 +1137,13 @@ static int aic31xx_set_bias_level(struct snd_soc_codec *codec,
 
 static int aic31xx_codec_probe(struct snd_soc_codec *codec)
 {
+	int ret = 0;
 	struct aic31xx_priv *aic31xx = snd_soc_codec_get_drvdata(codec);
-	int i, ret;
+	int i;
 
 	dev_dbg(aic31xx->dev, "## %s\n", __func__);
+
+	aic31xx = snd_soc_codec_get_drvdata(codec);
 
 	aic31xx->codec = codec;
 
@@ -1208,10 +1169,8 @@ static int aic31xx_codec_probe(struct snd_soc_codec *codec)
 		return ret;
 
 	ret = aic31xx_add_widgets(codec);
-	if (ret)
-		return ret;
 
-	return 0;
+	return ret;
 }
 
 static int aic31xx_codec_remove(struct snd_soc_codec *codec)
@@ -1299,68 +1258,58 @@ static const struct of_device_id tlv320aic31xx_of_match[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, tlv320aic31xx_of_match);
-#endif /* CONFIG_OF */
 
-#ifdef CONFIG_ACPI
-static const struct acpi_device_id aic31xx_acpi_match[] = {
-	{ "10TI3100", 0 },
-	{ }
-};
-MODULE_DEVICE_TABLE(acpi, aic31xx_acpi_match);
-#endif
-
-static int aic31xx_i2c_probe(struct i2c_client *i2c,
-			     const struct i2c_device_id *id)
+static void aic31xx_pdata_from_of(struct aic31xx_priv *aic31xx)
 {
-	struct aic31xx_priv *aic31xx;
-	unsigned int micbias_value = MICBIAS_2_0V;
-	int i, ret;
+	struct device_node *np = aic31xx->dev->of_node;
+	unsigned int value = MICBIAS_2_0V;
+	int ret;
 
-	dev_dbg(&i2c->dev, "## %s: %s codec_type = %d\n", __func__,
-		id->name, (int)id->driver_data);
-
-	aic31xx = devm_kzalloc(&i2c->dev, sizeof(*aic31xx), GFP_KERNEL);
-	if (!aic31xx)
-		return -ENOMEM;
-
-	aic31xx->regmap = devm_regmap_init_i2c(i2c, &aic31xx_i2c_regmap);
-	if (IS_ERR(aic31xx->regmap)) {
-		ret = PTR_ERR(aic31xx->regmap);
-		dev_err(&i2c->dev, "Failed to allocate register map: %d\n",
-			ret);
-		return ret;
-	}
-	aic31xx->dev = &i2c->dev;
-
-	aic31xx->codec_type = id->driver_data;
-
-	dev_set_drvdata(aic31xx->dev, aic31xx);
-
-	fwnode_property_read_u32(aic31xx->dev->fwnode, "ai31xx-micbias-vg",
-				 &micbias_value);
-	switch (micbias_value) {
+	of_property_read_u32(np, "ai31xx-micbias-vg", &value);
+	switch (value) {
 	case MICBIAS_2_0V:
 	case MICBIAS_2_5V:
 	case MICBIAS_AVDDV:
-		aic31xx->micbias_vg = micbias_value;
+		aic31xx->pdata.micbias_vg = value;
 		break;
 	default:
-		dev_err(aic31xx->dev, "Bad ai31xx-micbias-vg value %d\n",
-			micbias_value);
-		aic31xx->micbias_vg = MICBIAS_2_0V;
+		dev_err(aic31xx->dev,
+			"Bad ai31xx-micbias-vg value %d DT\n",
+			value);
+		aic31xx->pdata.micbias_vg = MICBIAS_2_0V;
 	}
 
-	if (dev_get_platdata(aic31xx->dev)) {
-		memcpy(&aic31xx->pdata, dev_get_platdata(aic31xx->dev), sizeof(aic31xx->pdata));
-		aic31xx->codec_type = aic31xx->pdata.codec_type;
-		aic31xx->micbias_vg = aic31xx->pdata.micbias_vg;
-	}
+	ret = of_get_named_gpio(np, "gpio-reset", 0);
+	if (ret > 0)
+		aic31xx->pdata.gpio_reset = ret;
+}
+#else /* CONFIG_OF */
+static void aic31xx_pdata_from_of(struct aic31xx_priv *aic31xx)
+{
+}
+#endif /* CONFIG_OF */
 
-	aic31xx->gpio_reset = devm_gpiod_get_optional(aic31xx->dev, "reset",
-						      GPIOD_OUT_LOW);
-	if (IS_ERR(aic31xx->gpio_reset)) {
-		dev_err(aic31xx->dev, "not able to acquire gpio\n");
-		return PTR_ERR(aic31xx->gpio_reset);
+static int aic31xx_device_init(struct aic31xx_priv *aic31xx)
+{
+	int ret, i;
+
+	dev_set_drvdata(aic31xx->dev, aic31xx);
+
+	if (dev_get_platdata(aic31xx->dev))
+		memcpy(&aic31xx->pdata, dev_get_platdata(aic31xx->dev),
+		       sizeof(aic31xx->pdata));
+	else if (aic31xx->dev->of_node)
+		aic31xx_pdata_from_of(aic31xx);
+
+	if (aic31xx->pdata.gpio_reset) {
+		ret = devm_gpio_request_one(aic31xx->dev,
+					    aic31xx->pdata.gpio_reset,
+					    GPIOF_OUT_INIT_HIGH,
+					    "aic31xx-reset-pin");
+		if (ret < 0) {
+			dev_err(aic31xx->dev, "not able to acquire gpio\n");
+			return ret;
+		}
 	}
 
 	for (i = 0; i < ARRAY_SIZE(aic31xx->supplies); i++)
@@ -1369,12 +1318,44 @@ static int aic31xx_i2c_probe(struct i2c_client *i2c,
 	ret = devm_regulator_bulk_get(aic31xx->dev,
 				      ARRAY_SIZE(aic31xx->supplies),
 				      aic31xx->supplies);
-	if (ret) {
+	if (ret != 0)
 		dev_err(aic31xx->dev, "Failed to request supplies: %d\n", ret);
+
+	return ret;
+}
+
+static int aic31xx_i2c_probe(struct i2c_client *i2c,
+			     const struct i2c_device_id *id)
+{
+	struct aic31xx_priv *aic31xx;
+	int ret;
+	const struct regmap_config *regmap_config;
+
+	dev_dbg(&i2c->dev, "## %s: %s codec_type = %d\n", __func__,
+		id->name, (int) id->driver_data);
+
+	regmap_config = &aic31xx_i2c_regmap;
+
+	aic31xx = devm_kzalloc(&i2c->dev, sizeof(*aic31xx), GFP_KERNEL);
+	if (aic31xx == NULL)
+		return -ENOMEM;
+
+	aic31xx->regmap = devm_regmap_init_i2c(i2c, regmap_config);
+	if (IS_ERR(aic31xx->regmap)) {
+		ret = PTR_ERR(aic31xx->regmap);
+		dev_err(&i2c->dev, "Failed to allocate register map: %d\n",
+			ret);
 		return ret;
 	}
+	aic31xx->dev = &i2c->dev;
 
-	if (aic31xx->codec_type & DAC31XX_BIT)
+	aic31xx->pdata.codec_type = id->driver_data;
+
+	ret = aic31xx_device_init(aic31xx);
+	if (ret)
+		return ret;
+
+	if (aic31xx->pdata.codec_type & DAC31XX_BIT)
 		return snd_soc_register_codec(&i2c->dev,
 				&soc_codec_driver_aic31xx,
 				dac31xx_dai_driver,
@@ -1405,6 +1386,14 @@ static const struct i2c_device_id aic31xx_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, aic31xx_i2c_id);
 
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id aic31xx_acpi_match[] = {
+	{ "10TI3100", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, aic31xx_acpi_match);
+#endif
+
 static struct i2c_driver aic31xx_i2c_driver = {
 	.driver = {
 		.name	= "tlv320aic31xx-codec",
@@ -1415,8 +1404,9 @@ static struct i2c_driver aic31xx_i2c_driver = {
 	.remove		= aic31xx_i2c_remove,
 	.id_table	= aic31xx_i2c_id,
 };
+
 module_i2c_driver(aic31xx_i2c_driver);
 
-MODULE_AUTHOR("Jyri Sarha <jsarha@ti.com>");
-MODULE_DESCRIPTION("ASoC TLV320AIC31xx CODEC Driver");
-MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("ASoC TLV320AIC3111 codec driver");
+MODULE_AUTHOR("Jyri Sarha");
+MODULE_LICENSE("GPL");

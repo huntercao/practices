@@ -3135,19 +3135,19 @@ static ssize_t snd_pcm_writev(struct kiocb *iocb, struct iov_iter *from)
 	return result;
 }
 
-static __poll_t snd_pcm_playback_poll(struct file *file, poll_table * wait)
+static unsigned int snd_pcm_playback_poll(struct file *file, poll_table * wait)
 {
 	struct snd_pcm_file *pcm_file;
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_runtime *runtime;
-        __poll_t mask;
+        unsigned int mask;
 	snd_pcm_uframes_t avail;
 
 	pcm_file = file->private_data;
 
 	substream = pcm_file->substream;
 	if (PCM_RUNTIME_CHECK(substream))
-		return EPOLLOUT | EPOLLWRNORM | EPOLLERR;
+		return POLLOUT | POLLWRNORM | POLLERR;
 	runtime = substream->runtime;
 
 	poll_wait(file, &runtime->sleep, wait);
@@ -3159,7 +3159,7 @@ static __poll_t snd_pcm_playback_poll(struct file *file, poll_table * wait)
 	case SNDRV_PCM_STATE_PREPARED:
 	case SNDRV_PCM_STATE_PAUSED:
 		if (avail >= runtime->control->avail_min) {
-			mask = EPOLLOUT | EPOLLWRNORM;
+			mask = POLLOUT | POLLWRNORM;
 			break;
 		}
 		/* Fall through */
@@ -3167,26 +3167,26 @@ static __poll_t snd_pcm_playback_poll(struct file *file, poll_table * wait)
 		mask = 0;
 		break;
 	default:
-		mask = EPOLLOUT | EPOLLWRNORM | EPOLLERR;
+		mask = POLLOUT | POLLWRNORM | POLLERR;
 		break;
 	}
 	snd_pcm_stream_unlock_irq(substream);
 	return mask;
 }
 
-static __poll_t snd_pcm_capture_poll(struct file *file, poll_table * wait)
+static unsigned int snd_pcm_capture_poll(struct file *file, poll_table * wait)
 {
 	struct snd_pcm_file *pcm_file;
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_runtime *runtime;
-        __poll_t mask;
+        unsigned int mask;
 	snd_pcm_uframes_t avail;
 
 	pcm_file = file->private_data;
 
 	substream = pcm_file->substream;
 	if (PCM_RUNTIME_CHECK(substream))
-		return EPOLLIN | EPOLLRDNORM | EPOLLERR;
+		return POLLIN | POLLRDNORM | POLLERR;
 	runtime = substream->runtime;
 
 	poll_wait(file, &runtime->sleep, wait);
@@ -3198,19 +3198,19 @@ static __poll_t snd_pcm_capture_poll(struct file *file, poll_table * wait)
 	case SNDRV_PCM_STATE_PREPARED:
 	case SNDRV_PCM_STATE_PAUSED:
 		if (avail >= runtime->control->avail_min) {
-			mask = EPOLLIN | EPOLLRDNORM;
+			mask = POLLIN | POLLRDNORM;
 			break;
 		}
 		mask = 0;
 		break;
 	case SNDRV_PCM_STATE_DRAINING:
 		if (avail > 0) {
-			mask = EPOLLIN | EPOLLRDNORM;
+			mask = POLLIN | POLLRDNORM;
 			break;
 		}
 		/* Fall through */
 	default:
-		mask = EPOLLIN | EPOLLRDNORM | EPOLLERR;
+		mask = POLLIN | POLLRDNORM | POLLERR;
 		break;
 	}
 	snd_pcm_stream_unlock_irq(substream);
@@ -3446,7 +3446,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_lib_default_mmap);
 int snd_pcm_lib_mmap_iomem(struct snd_pcm_substream *substream,
 			   struct vm_area_struct *area)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_pcm_runtime *runtime = substream->runtime;;
 
 	area->vm_page_prot = pgprot_noncached(area->vm_page_prot);
 	return vm_iomap_memory(area, runtime->dma_addr, runtime->dma_bytes);
