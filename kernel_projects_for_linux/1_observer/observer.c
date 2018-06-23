@@ -39,7 +39,7 @@ void sampleLoadAvg()
 int main(int argc, char *argv[])
 {
 	char repTypeName[16];
-	int interval, duration, iteration;
+	int interval = 0, duration = 0, iteration = 0;
 	struct timeval now;
 
 	report_type reportType = STANDARD;
