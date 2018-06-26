@@ -5,6 +5,6 @@ int
 main (void)
 {
 	puts("Hello World!");
-	puts("This is " PACKAGES_STRING " .");
+	puts("This is " PACKAGE_STRING " .");
 	return 0;
 }
