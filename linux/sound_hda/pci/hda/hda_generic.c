@@ -5150,6 +5150,7 @@ static int playback_pcm_open(struct hda_pcm_stream *hinfo,
 	int err;
 
 	mutex_lock(&spec->pcm_mutex);
+	dev_info(hda_codec_dev(codec), "playback_pcm_open: ...\n");
 	err = snd_hda_multi_out_analog_open(codec,
 					    &spec->multiout, substream,
 					     hinfo);

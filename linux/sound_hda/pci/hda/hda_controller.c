@@ -101,6 +101,8 @@ static int azx_pcm_close(struct snd_pcm_substream *substream)
 	struct azx *chip = apcm->chip;
 	struct azx_dev *azx_dev = get_azx_dev(substream);
 
+	dev_info(chip->card->dev, "azx_pcm_close: ...\n");
+
 	trace_azx_pcm_close(chip, azx_dev);
 	mutex_lock(&chip->open_mutex);
 	azx_release_device(azx_dev);
@@ -599,6 +601,7 @@ static int azx_pcm_open(struct snd_pcm_substream *substream)
 	int err;
 	int buff_step;
 
+	dev_info(chip->card->dev, "azx_pcm_open: ...\n");
 	snd_hda_codec_pcm_get(apcm->info);
 	mutex_lock(&chip->open_mutex);
 	azx_dev = azx_assign_device(chip, substream);
@@ -691,6 +694,9 @@ static int azx_pcm_mmap(struct snd_pcm_substream *substream,
 {
 	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
 	struct azx *chip = apcm->chip;
+
+	dev_info(chip->card->dev, "azx_pcm_mmap: ...\n");
+
 	if (chip->ops->pcm_mmap_prepare)
 		chip->ops->pcm_mmap_prepare(substream, area);
 	return snd_pcm_lib_default_mmap(substream, area);
