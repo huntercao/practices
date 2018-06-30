@@ -305,8 +305,10 @@ EXPORT_SYMBOL(snd_pcm_lib_preallocate_pages_for_all);
 struct page *snd_pcm_sgbuf_ops_page(struct snd_pcm_substream *substream, unsigned long offset)
 {
 	struct snd_sg_buf *sgbuf = snd_pcm_substream_sgbuf(substream);
-
 	unsigned int idx = offset >> PAGE_SHIFT;
+
+	dev_info(substream->pcm->card->dev, "snd_pcm_sgbuf_ops_page...\n");
+
 	if (idx >= (unsigned int)sgbuf->pages)
 		return NULL;
 	return sgbuf->page_table[idx];

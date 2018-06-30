@@ -3513,6 +3513,9 @@ static int snd_pcm_mmap(struct file *file, struct vm_area_struct *area)
 		return -ENXIO;
 
 	offset = area->vm_pgoff << PAGE_SHIFT;
+
+	dev_info(substream->pcm->card->dev, "snd_pcm_mmap offset = 0x%lx\n", offset);
+
 	switch (offset) {
 	case SNDRV_PCM_MMAP_OFFSET_STATUS:
 		if (!pcm_status_mmap_allowed(pcm_file))

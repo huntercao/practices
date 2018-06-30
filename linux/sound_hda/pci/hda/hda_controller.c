@@ -122,6 +122,8 @@ static int azx_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct azx_dev *azx_dev = get_azx_dev(substream);
 	int ret;
 
+	dev_info(chip->card->dev, "azx_pcm_hw_params: ...\n");
+
 	trace_azx_pcm_hw_params(chip, azx_dev);
 	dsp_lock(azx_dev);
 	if (dsp_is_locked(azx_dev)) {
@@ -146,6 +148,8 @@ static int azx_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct azx *chip = apcm->chip;
 	struct hda_pcm_stream *hinfo = to_hda_pcm_stream(substream);
 	int err;
+
+	dev_info(chip->card->dev, "azx_pcm_hw_free: ...\n");
 
 	/* reset BDL address */
 	dsp_lock(azx_dev);
@@ -172,6 +176,8 @@ static int azx_pcm_prepare(struct snd_pcm_substream *substream)
 	struct hda_spdif_out *spdif =
 		snd_hda_spdif_out_of_nid(apcm->codec, hinfo->nid);
 	unsigned short ctls = spdif ? spdif->ctls : 0;
+
+	dev_info(chip->card->dev, "azx_pcm_prepare: ...\n");
 
 	trace_azx_pcm_prepare(chip, azx_dev);
 	dsp_lock(azx_dev);
@@ -228,6 +234,9 @@ static int azx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	int sync_reg;
 
 	azx_dev = get_azx_dev(substream);
+
+	dev_info(chip->card->dev, "azx_pcm_trigger: cmd = 0x%x\n", cmd);
+
 	trace_azx_pcm_trigger(chip, azx_dev, cmd);
 
 	hstr = azx_stream(azx_dev);
@@ -310,6 +319,8 @@ unsigned int azx_get_position(struct azx *chip,
 	unsigned int pos;
 	int stream = substream->stream;
 	int delay = 0;
+
+	dev_info(chip->card->dev, "azx_pcm_get_position...\n");
 
 	if (chip->get_position[stream])
 		pos = chip->get_position[stream](chip, azx_dev);

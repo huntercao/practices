@@ -1769,6 +1769,8 @@ static int snd_pcm_lib_ioctl_fifo_size(struct snd_pcm_substream *substream,
 int snd_pcm_lib_ioctl(struct snd_pcm_substream *substream,
 		      unsigned int cmd, void *arg)
 {
+	dev_info(substream->pcm->card->dev, "snd_pcm_lib_ioctl: 0x%x\n", cmd);
+
 	switch (cmd) {
 	case SNDRV_PCM_IOCTL1_RESET:
 		return snd_pcm_lib_ioctl_reset(substream, arg);

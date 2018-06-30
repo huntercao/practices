@@ -672,6 +672,8 @@ static long snd_pcm_ioctl_compat(struct file *file, unsigned int cmd, unsigned l
 	 */
 	pcm_file->no_compat_mmap = 1;
 
+	dev_info(substream->pcm->card->dev, "snd_pcm_ioctl_compat: cmd = 0x%x\n", cmd);
+
 	switch (cmd) {
 	case SNDRV_PCM_IOCTL_PVERSION:
 	case SNDRV_PCM_IOCTL_INFO:
