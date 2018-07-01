@@ -1180,6 +1180,7 @@ snd_pcm_sframes_t snd_pcm_oss_write3(struct snd_pcm_substream *substream, const 
 		}
 		ret = __snd_pcm_lib_xfer(substream, (void *)ptr, true,
 					 frames, in_kernel);
+		dev_info(substream->pcm->card->dev, "snd_pcm_oss_write3: __snd_pcm_lib_xfer() ret = 0x%x \n", ret);
 		if (ret != -EPIPE && ret != -ESTRPIPE)
 			break;
 		/* test, if we can't store new data, because the stream */

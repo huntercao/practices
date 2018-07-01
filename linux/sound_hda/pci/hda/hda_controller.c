@@ -343,6 +343,9 @@ unsigned int azx_get_position(struct azx *chip,
 	}
 
 	trace_azx_get_position(chip, azx_dev, pos, delay);
+
+	dev_info(chip->card->dev, "azx_get_position: pos = 0x%x\n", pos);
+
 	return pos;
 }
 EXPORT_SYMBOL_GPL(azx_get_position);
@@ -352,8 +355,13 @@ static snd_pcm_uframes_t azx_pcm_pointer(struct snd_pcm_substream *substream)
 	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
 	struct azx *chip = apcm->chip;
 	struct azx_dev *azx_dev = get_azx_dev(substream);
-	return bytes_to_frames(substream->runtime,
+	
+	snd_pcm_uframes_t frames_number =  bytes_to_frames(substream->runtime,
 			       azx_get_position(chip, azx_dev));
+	dev_info(chip->card->dev, "azx_pcm_pointer: frames_number = 0x%lx\n",
+				frames_number);
+
+	return frames_number; 
 }
 
 /*
@@ -1142,6 +1150,7 @@ static void stream_update(struct hdac_bus *bus, struct hdac_stream *s)
 	if (!chip->ops->position_check ||
 	    chip->ops->position_check(chip, azx_dev)) {
 		spin_unlock(&bus->reg_lock);
+		dev_info(chip->card->dev, "stream_update...\n");
 		snd_pcm_period_elapsed(azx_stream(azx_dev)->substream);
 		spin_lock(&bus->reg_lock);
 	}

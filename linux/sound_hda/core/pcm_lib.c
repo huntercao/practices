@@ -283,6 +283,7 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 	 * corrections for hw_ptr position
 	 */
 	pos = substream->ops->pointer(substream);
+	dev_info(substream->pcm->card->dev, "snd_pcm_update_hw_ptr0: pos = 0x%lx\n", pos);
 	curr_jiffies = jiffies;
 	if (runtime->tstamp_mode == SNDRV_PCM_TSTAMP_ENABLE) {
 		if ((substream->ops->get_time_info) &&
@@ -2177,14 +2178,25 @@ snd_pcm_sframes_t __snd_pcm_lib_xfer(struct snd_pcm_substream *substream,
 		if (err < 0)
 			goto _end_unlock;
 	}
-
+	
 	runtime->twake = runtime->control->avail_min ? : 1;
 	if (runtime->status->state == SNDRV_PCM_STATE_RUNNING)
+	{
+		dev_info(substream->pcm->card->dev, "__snd_pcm_lib_xfer: call snd_pcm_update_hw_ptr()\n");
 		snd_pcm_update_hw_ptr(substream);
+	}
 	if (is_playback)
+	{
 		avail = snd_pcm_playback_avail(runtime);
+		dev_info(substream->pcm->card->dev, "__snd_pcm_lib_xfer: call snd_pcm_playback_avail(), avail = 0x%lx\n",
+							avail);
+	}
 	else
+	{
 		avail = snd_pcm_capture_avail(runtime);
+		dev_info(substream->pcm->card->dev, "__snd_pcm_lib_xfer: call snd_pcm_capture_avail(), avail = 0x%lx\n",
+							avail);
+	}
 	while (size > 0) {
 		snd_pcm_uframes_t frames, appl_ptr, appl_ofs;
 		snd_pcm_uframes_t cont;
