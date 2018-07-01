@@ -320,7 +320,7 @@ unsigned int azx_get_position(struct azx *chip,
 	int stream = substream->stream;
 	int delay = 0;
 
-	dev_info(chip->card->dev, "azx_pcm_get_position...\n");
+	dev_info(chip->card->dev, "azx_get_position...\n");
 
 	if (chip->get_position[stream])
 		pos = chip->get_position[stream](chip, azx_dev);
