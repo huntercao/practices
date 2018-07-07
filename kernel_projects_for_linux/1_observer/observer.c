@@ -17,7 +17,8 @@ typedef enum
 
 void sampleLoadAvg()
 {
-	char *args[6];
+	char *token;
+	const char s[2] = " ";
 	char lineBuf[LB_SIZE];
 	FILE *thisProcFile = fopen("/proc/loadavg", "r");
 	if( thisProcFile == NULL)
@@ -26,13 +27,20 @@ void sampleLoadAvg()
 		return;
 	}
 
+	memset(lineBuf, 0, LB_SIZE);	
+
 	fgets(lineBuf, LB_SIZE + 1, thisProcFile);
-	args[0] = strtok(lineBuf, " "); 	 	
-	for(int i = 1; i <= 5; i++)
+	printf("the linBuf of loadavg: %s\n", lineBuf);
+
+	token = strtok(lineBuf, s); 	 	
+	int index = 0; 
+	while( token != NULL ) 
 	{
-		args[i] = strtok(NULL, " /");	
-		printf("Index[%d]\t:\t%s\n", i, args[i]);
-	}
+		printf( "Index %d: %s\n", index++, token);
+    
+		token = strtok(NULL, s);
+   	}
+
 	fclose(thisProcFile);
 }
 
