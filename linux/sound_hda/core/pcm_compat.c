@@ -383,6 +383,8 @@ static int snd_pcm_ioctl_xferi_compat(struct snd_pcm_substream *substream,
 	    get_user(frames, &data32->frames))
 		return -EFAULT;
 
+	dev_info(substream->pcm->card->dev, "snd_pcm_ioctl_xferi_compat frames = 0x%x\n", frames);
+
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
 		err = snd_pcm_lib_write(substream, compat_ptr(buf), frames);
 	else
@@ -441,6 +443,9 @@ static int snd_pcm_ioctl_xfern_compat(struct snd_pcm_substream *substream,
 		bufs[i] = compat_ptr(ptr);
 		bufptr++;
 	}
+
+	dev_info(substream->pcm->card->dev, "snd_pcm_ioctl_xfern_compat frames = 0x%x\n", frames);
+
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
 		err = snd_pcm_lib_writev(substream, bufs, frames);
 	else
@@ -671,6 +676,8 @@ static long snd_pcm_ioctl_compat(struct file *file, unsigned int cmd, unsigned l
 	 * incompatibility.
 	 */
 	pcm_file->no_compat_mmap = 1;
+
+	dev_info(substream->pcm->card->dev, "snd_pcm_ioctl_compat: cmd = 0x%x\n", cmd);
 
 	switch (cmd) {
 	case SNDRV_PCM_IOCTL_PVERSION:

@@ -14,3 +14,5 @@ soundcore-objs  := sound_core.o
 
 default:
 	$(MAKE) -C $(DIR) M=$(PWD) modules
+clean:
+	$(MAKE) -C $(DIR) M=$(PWD) clean

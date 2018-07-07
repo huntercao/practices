@@ -807,6 +807,7 @@ static void azx_irq_pending_work(struct work_struct *work)
 			if (ok > 0) {
 				azx_dev->irq_pending = 0;
 				spin_unlock(&bus->reg_lock);
+				dev_info(chip->card->dev, "azx_irq_pending_work...\n");
 				snd_pcm_period_elapsed(s->substream);
 				spin_lock(&bus->reg_lock);
 			} else if (ok < 0) {
@@ -2136,6 +2137,9 @@ static int azx_probe(struct pci_dev *pci,
 	err = azx_create(card, pci, dev, pci_id->driver_data, &chip);
 	if (err < 0)
 		goto out_free;
+
+	dev_info(card->dev, "azx_probe: after azx_create. \n");
+
 	card->private_data = chip;
 	hda = container_of(chip, struct hda_intel, chip);
 

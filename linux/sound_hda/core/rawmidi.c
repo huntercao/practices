@@ -1366,11 +1366,11 @@ static ssize_t snd_rawmidi_write(struct file *file, const char __user *buf,
 	return result;
 }
 
-static __poll_t snd_rawmidi_poll(struct file *file, poll_table * wait)
+static unsigned int snd_rawmidi_poll(struct file *file, poll_table * wait)
 {
 	struct snd_rawmidi_file *rfile;
 	struct snd_rawmidi_runtime *runtime;
-	__poll_t mask;
+	unsigned int mask;
 
 	rfile = file->private_data;
 	if (rfile->input != NULL) {
@@ -1385,11 +1385,11 @@ static __poll_t snd_rawmidi_poll(struct file *file, poll_table * wait)
 	mask = 0;
 	if (rfile->input != NULL) {
 		if (snd_rawmidi_ready(rfile->input))
-			mask |= EPOLLIN | EPOLLRDNORM;
+			mask |= POLLIN | POLLRDNORM;
 	}
 	if (rfile->output != NULL) {
 		if (snd_rawmidi_ready(rfile->output))
-			mask |= EPOLLOUT | EPOLLWRNORM;
+			mask |= POLLOUT | POLLWRNORM;
 	}
 	return mask;
 }

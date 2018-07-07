@@ -203,20 +203,20 @@ static ssize_t snd_info_entry_write(struct file *file, const char __user *buffer
 	return size;
 }
 
-static __poll_t snd_info_entry_poll(struct file *file, poll_table *wait)
+static unsigned int snd_info_entry_poll(struct file *file, poll_table *wait)
 {
 	struct snd_info_private_data *data = file->private_data;
 	struct snd_info_entry *entry = data->entry;
-	__poll_t mask = 0;
+	unsigned int mask = 0;
 
 	if (entry->c.ops->poll)
 		return entry->c.ops->poll(entry,
 					  data->file_private_data,
 					  file, wait);
 	if (entry->c.ops->read)
-		mask |= EPOLLIN | EPOLLRDNORM;
+		mask |= POLLIN | POLLRDNORM;
 	if (entry->c.ops->write)
-		mask |= EPOLLOUT | EPOLLWRNORM;
+		mask |= POLLOUT | POLLWRNORM;
 	return mask;
 }
 

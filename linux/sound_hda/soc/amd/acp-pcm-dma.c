@@ -850,9 +850,6 @@ static snd_pcm_uframes_t acp_dma_pointer(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct audio_substream_data *rtd = runtime->private_data;
 
-	if (!rtd)
-		return -EINVAL;
-
 	buffersize = frames_to_bytes(runtime, runtime->buffer_size);
 	bytescount = acp_get_byte_count(rtd->acp_mmio, substream->stream);
 
@@ -878,8 +875,6 @@ static int acp_dma_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct audio_substream_data *rtd = runtime->private_data;
 
-	if (!rtd)
-		return -EINVAL;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		config_acp_dma_channel(rtd->acp_mmio, SYSRAM_TO_ACP_CH_NUM,
 					PLAYBACK_START_DMA_DESCR_CH12,
@@ -1096,11 +1091,7 @@ static int acp_audio_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, audio_drv_data);
 
 	/* Initialize the ACP */
-	status = acp_init(audio_drv_data->acp_mmio, audio_drv_data->asic_type);
-	if (status) {
-		dev_err(&pdev->dev, "ACP Init failed status:%d\n", status);
-		return status;
-	}
+	acp_init(audio_drv_data->acp_mmio, audio_drv_data->asic_type);
 
 	status = snd_soc_register_platform(&pdev->dev, &acp_asoc_platform);
 	if (status != 0) {
@@ -1117,12 +1108,9 @@ static int acp_audio_probe(struct platform_device *pdev)
 
 static int acp_audio_remove(struct platform_device *pdev)
 {
-	int status;
 	struct audio_drv_data *adata = dev_get_drvdata(&pdev->dev);
 
-	status = acp_deinit(adata->acp_mmio);
-	if (status)
-		dev_err(&pdev->dev, "ACP Deinit failed status:%d\n", status);
+	acp_deinit(adata->acp_mmio);
 	snd_soc_unregister_platform(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 
@@ -1132,14 +1120,9 @@ static int acp_audio_remove(struct platform_device *pdev)
 static int acp_pcm_resume(struct device *dev)
 {
 	u16 bank;
-	int status;
 	struct audio_drv_data *adata = dev_get_drvdata(dev);
 
-	status = acp_init(adata->acp_mmio, adata->asic_type);
-	if (status) {
-		dev_err(dev, "ACP Init failed status:%d\n", status);
-		return status;
-	}
+	acp_init(adata->acp_mmio, adata->asic_type);
 
 	if (adata->play_stream && adata->play_stream->runtime) {
 		/* For Stoney, Memory gating is disabled,i.e SRAM Banks
@@ -1171,26 +1154,18 @@ static int acp_pcm_resume(struct device *dev)
 
 static int acp_pcm_runtime_suspend(struct device *dev)
 {
-	int status;
 	struct audio_drv_data *adata = dev_get_drvdata(dev);
 
-	status = acp_deinit(adata->acp_mmio);
-	if (status)
-		dev_err(dev, "ACP Deinit failed status:%d\n", status);
+	acp_deinit(adata->acp_mmio);
 	acp_reg_write(0, adata->acp_mmio, mmACP_EXTERNAL_INTR_ENB);
 	return 0;
 }
 
 static int acp_pcm_runtime_resume(struct device *dev)
 {
-	int status;
 	struct audio_drv_data *adata = dev_get_drvdata(dev);
 
-	status = acp_init(adata->acp_mmio, adata->asic_type);
-	if (status) {
-		dev_err(dev, "ACP Init failed status:%d\n", status);
-		return status;
-	}
+	acp_init(adata->acp_mmio, adata->asic_type);
 	acp_reg_write(1, adata->acp_mmio, mmACP_EXTERNAL_INTR_ENB);
 	return 0;
 }
