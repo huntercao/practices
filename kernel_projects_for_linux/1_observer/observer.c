@@ -42,7 +42,6 @@ int main(int argc, char *argv[])
 	int interval = 0, duration = 0, iteration = 0;
 	struct timeval now;
 
-	report_type reportType = STANDARD;
 	strcpy(repTypeName, "Standard");
 	if(argc > 1)
 	{
@@ -55,12 +54,10 @@ int main(int argc, char *argv[])
 		}
 		if(c2 == 's')
 		{
-			reportType = SHORT;
 			strcpy(repTypeName, "Short");
 		}
 		if(c2 == 'l')
 		{
-			reportType = LONG;
 			strcpy(repTypeName, "Long");
 			interval = atoi(argv[2]);
 			duration = atoi(argv[3]);
