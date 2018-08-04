@@ -1,0 +1,11 @@
+Simple way to stop pulseaudio on Ubuntu:
+1. Locate the pulseaudio at:
+	$ readlink -f pulseaudio
+	/usr/bin/pulseaudio
+2. Change the pulseaudio name such as pulseaudio_origin
+3. Locate the PID of pulseaudio with:
+	$ ps ax | grep pulseaudio
+	 1079 ?        Ssl    0:00 /usr/bin/pulseaudio --daemonize=no
+	 1483 ?        S<l    0:00 /usr/bin/pulseaudio --start --log-target=syslog
+4. Kill the pulseaudio.
+	
