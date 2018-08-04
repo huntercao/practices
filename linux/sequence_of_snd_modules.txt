@@ -1,0 +1,13 @@
+After stop pulseaudio. We can remove snd modules and insert local modules.
+Below is the sequence of load snd modules. Remove sequence is in reverse order:
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./soundcore.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./core/snd.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./core/snd-timer.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./core/snd-hwdep.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./core/snd-pcm.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./hda/snd-hda-core.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./pci/hda/snd-hda-codec.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./pci/hda/snd-hda-codec-generic.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./pci/hda/snd-hda-codec-realtek.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./pci/hda/snd-hda-codec-hdmi.ko
+root@hunter-OptiPlex-9010:/home/hunter/github/practices/linux/sound_hda# insmod ./pci/hda/snd-hda-intel.ko
