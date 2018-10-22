@@ -13,10 +13,10 @@ class Sales_item
 	friend std::ostream& operator<<
 			(std::ostream&, const Sales_item&);
 public: 
-	Sales_item(const std::string &book = "") :
-		isbn(book), units_sold(0), revenue(0.0) {}
+	explicit Sales_item(const std::string &book = "") :
+			isbn(book), units_sold(0), revenue(0.0) {}
 	//Sales_item(std::string &is);
-	Sales_item(std::istream &s);
+	explicit Sales_item(std::istream &s);
 
 	double avg_price() const;
 	bool same_isbn(const Sales_item &rhs) const

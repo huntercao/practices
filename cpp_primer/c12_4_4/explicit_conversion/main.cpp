@@ -9,9 +9,10 @@ int main()
 	std::string null_book = "9-9999-99";
 
 	Sales_item item;
-	item.same_isbn(null_book);
 
-	item.same_isbn(std::cin);
+	item.same_isbn(Sales_item(null_book));
+
+	item.same_isbn(Sales_item(std::cin));
 
 	return 0;
 }
