@@ -45,3 +45,17 @@ int main()
 	printf("main(). Before return.\n");
 	return 0;
 }
+/*
+File::File(). fd = 3
+main(). Before first foo()
+ foo() in. 
+ File::Read(). 
+ foo() out. 
+~File::File(). fd = 3
+main(). Before second foo()
+ foo() in. 
+ File::Read(). 
+ foo() out. 
+~File::File(). fd = -1
+*** Error in `./a.out': double free or corruption (!prev): 0x0000000000974c20 ***
+*/

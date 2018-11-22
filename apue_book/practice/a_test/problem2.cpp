@@ -2,7 +2,14 @@
 // To avoid below error:
 //	/tmp/ccGMKhSa.o: In function `A::~A()':
 //	problem2.cpp:(.text._ZN1AD2Ev[_ZN1AD5Ev]+0x35): undefined reference to `operator delete(void*)'
-
+/* Result of running.
+A::foo
+A::foo
+B::foo
+B::boo
+A::boo
+A::boo 
+*/
 #include <stdio.h>
 
 class A

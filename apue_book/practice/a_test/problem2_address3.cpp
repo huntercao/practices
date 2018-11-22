@@ -63,3 +63,25 @@ int main()
 	printf("main(). Before \"return 0;\" \n");
 	return 0;
 }
+/*
+A::A()
+A::foo. Address of this = 0x7ffe64507c60
+main(). Address of a = 0x7ffe64507c60
+A::foo. Address of this = 0x7ffe64507c60
+A::boo. Address of this = 0x7ffe64507c60
+main(). Before "B b;" 
+A::A()
+A::foo. Address of this = 0x7ffe64507c70
+B::B()
+B::foo. Address of this = 0x7ffe64507c70
+main(). Address of b = 0x7ffe64507c70
+B::foo. Address of this = 0x7ffe64507c70
+B::boo. Address of this = 0x7ffe64507c70
+main(). Before "return 0;" 
+~B::B()
+B::boo. Address of this = 0x7ffe64507c70
+~A::A()
+A::boo. Address of this = 0x7ffe64507c70
+~A::A()
+A::boo. Address of this = 0x7ffe64507c60
+*/
