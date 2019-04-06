@@ -55,3 +55,13 @@ int main()
 	printf("main(). Address of b = %p\n", &b);
 	return 0;
 }
+/*
+A::foo. Address of this = 0x7ffed4b1de50
+main(). Address of a = 0x7ffed4b1de50
+A::foo. Address of this = 0x7ffed4b1de60
+B::foo. Address of this = 0x7ffed4b1de60
+main(). Address of b = 0x7ffed4b1de60
+B::boo. Address of this = 0x7ffed4b1de60
+A::boo. Address of this = 0x7ffed4b1de60
+A::boo. Address of this = 0x7ffed4b1de50
+*/

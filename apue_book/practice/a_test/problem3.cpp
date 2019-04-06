@@ -25,3 +25,10 @@ int main(int argc, char** argv)
 	}
 	return ret;
 }	
+/*
+sizeof theVector = 2
+vi value = 2
+sizeof theVector = 2
+vi value = 1
+ vi is the end of the vector.
+*/
