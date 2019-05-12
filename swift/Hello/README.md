@@ -1,3 +1,4 @@
 # Hello
 
-A description of this package.
+Practice with:
+https://swift.org/getting-started/#using-the-package-manager
