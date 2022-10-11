@@ -74,3 +74,41 @@ Console.WriteLine("Decomposed expression: {0} => {1} {2} {3}",
 // This code produces the following output:  
 
 // Decomposed expression: num => num LessThan 5
+
+
+Expression<Func<string, bool>> expr = name => name.Length > 10 && name.StartsWith("G");
+
+Console.WriteLine(expr);
+
+AndAlsoModifier treeModifier = new AndAlsoModifier();
+Expression modifiedExpr = treeModifier.Modify((Expression)expr);
+
+Console.WriteLine(modifiedExpr);
+
+/*  This code produces the following output:  
+
+    name => ((name.Length > 10) && name.StartsWith("G"))  
+    name => ((name.Length > 10) || name.StartsWith("G"))  
+*/
+
+public class AndAlsoModifier : ExpressionVisitor
+{
+   public Expression Modify(Expression expression)
+   {
+      return Visit(expression);
+   }
+
+   protected override Expression VisitBinary(BinaryExpression b)
+   {
+      if (b.NodeType == ExpressionType.AndAlso)
+      {
+         Expression left = this.Visit(b.Left);
+         Expression right = this.Visit(b.Right);
+
+         // Make this binary expression an OrElse operation instead of an AndAlso operation.  
+         return Expression.MakeBinary(ExpressionType.OrElse, left, right, b.IsLiftedToNull, b.Method);
+      }
+
+      return base.VisitBinary(b);
+   }
+}
