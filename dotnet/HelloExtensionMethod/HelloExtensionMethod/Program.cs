@@ -1,4 +1,5 @@
 ﻿// https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/how-to-implement-and-call-a-custom-extension-method
+// https://www.c-sharpcorner.com/UploadFile/3d39b4/extension-method-in-C-Sharp/
 
 using System.Linq;
 using System.Text;
@@ -16,6 +17,16 @@ namespace CustomExtensions
       {
          return str.Split(new char[] { ' ', '.', '?' }, StringSplitOptions.RemoveEmptyEntries).Length;
       }
+      public static int TotalCharWithoutSpace(this string str)
+      {
+         int totalCharWithoutSpace = 0;
+         string[] userString = str.Split(' ');
+           foreach (string stringValue in userString)
+           {
+               totalCharWithoutSpace += stringValue.Length;
+           }
+           return totalCharWithoutSpace;
+       }
    }
 }
 namespace Extension_Methods_Simple
@@ -32,6 +43,9 @@ namespace Extension_Methods_Simple
          // parameter is not specified by the calling code.
          int i = s.WordCount();
          System.Console.WriteLine("Word count of s is {0}", i);
+
+         int totalCharWithoutSpace = s.TotalCharWithoutSpace();
+         Console.WriteLine("Total number of character is :" + totalCharWithoutSpace);
       }
    }
 }
