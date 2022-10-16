@@ -4,6 +4,7 @@ String s = String.Format("The current price is {0} per ounce.",
                          pricePerOunce);
 Console.WriteLine(s);
 
+// "C" Currency
 String s2 = String.Format("The current price is {0:C2} per ounce.",
                          pricePerOunce);
 Console.WriteLine(s2);
@@ -26,4 +27,5 @@ Console.WriteLine($"Hello, {name}! Today is {date.DayOfWeek}, it's {date:HH:mm} 
 Console.WriteLine($"|{"Left",-7}|{"Right",7}|");
 const int FieldWidthRightAligned = 20;
 Console.WriteLine($"{Math.PI,FieldWidthRightAligned} - default formatting of the pi number");
+// "F" Fixed-point
 Console.WriteLine($"{Math.PI,FieldWidthRightAligned:F3} - display only three decimal digits of the pi number");
