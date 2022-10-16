@@ -3,6 +3,7 @@ namespace DependencyInjection.Example;
 
 public class Worker : BackgroundService
 {
+
    private readonly IMessageWriter _messageWriter;
 
    public Worker(IMessageWriter messageWriter) =>
